@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>NEET Marks Calculator</title>
+
+<!-- PWA: installable, works offline, opens full-screen from home screen -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0f172a" />
+<link rel="icon" href="icons/favicon.png" type="image/png" />
+
+<!-- iOS / Safari "Add to Home Screen" support -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="NEET Marks" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <style>
   :root {
     --bg: #0f172a;
@@ -26,7 +37,20 @@
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding: 24px 16px 64px;
+    /* respect notch / status bar when running as installed PWA */
+    padding: calc(24px + env(safe-area-inset-top)) 16px calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .install-btn {
+    margin-top: 14px;
+    padding: 9px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: var(--accent-2);
+    color: #04222e;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
   }
 
   .app {
@@ -232,6 +256,7 @@
   <header>
     <h1><span>NEET</span> Marks Calculator</h1>
     <p>Enter your answers and get your score using the official marking scheme.</p>
+    <button id="installBtn" class="install-btn" style="display:none;">⬇ Install app</button>
   </header>
 
   <!-- Marking scheme reminder -->
@@ -474,6 +499,31 @@
         hint.classList.remove("warn");
       }
     });
+  });
+
+  // ---- PWA: register service worker for offline + installability ----
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => { /* offline-only feature, safe to ignore */ });
+    });
+  }
+
+  // ---- Android/Chrome custom install button ----
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    $("installBtn").style.display = "block";
+  });
+  $("installBtn").addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $("installBtn").style.display = "none";
+  });
+  window.addEventListener("appinstalled", () => {
+    $("installBtn").style.display = "none";
   });
 </script>
 </body>
