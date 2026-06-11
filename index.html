@@ -357,21 +357,27 @@
   // ---- Build subject-mode inputs ----
   function buildSubjectInputs() {
     const wrap = $("subjectModeBlock");
-    wrap.innerHTML = SUBJECTS.map(s => `
+    wrap.innerHTML =
+      `<p class="hint" style="margin-bottom:14px;">Fill any <b>two</b> of Correct / Incorrect / Unattempted per subject — the third is auto-calculated. Leave a subject blank to skip it.</p>` +
+      SUBJECTS.map(s => `
       <div class="subject-block">
         <h3>${s.name}</h3>
+        <div class="field" style="margin-bottom:10px;">
+          <label for="${s.key}_q">Number of questions</label>
+          <input type="number" id="${s.key}_q" min="1" value="${s.q}" />
+        </div>
         <div class="row3">
           <div class="field" style="margin-bottom:0;">
-            <label for="${s.key}_q">Questions</label>
-            <input type="number" id="${s.key}_q" min="1" value="${s.q}" />
-          </div>
-          <div class="field" style="margin-bottom:0;">
             <label for="${s.key}_correct">Correct</label>
-            <input type="number" id="${s.key}_correct" min="0" placeholder="0" />
+            <input type="number" id="${s.key}_correct" min="0" placeholder="—" />
           </div>
           <div class="field" style="margin-bottom:0;">
             <label for="${s.key}_wrong">Incorrect</label>
-            <input type="number" id="${s.key}_wrong" min="0" placeholder="0" />
+            <input type="number" id="${s.key}_wrong" min="0" placeholder="—" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="${s.key}_unattempted">Unattempted</label>
+            <input type="number" id="${s.key}_unattempted" min="0" placeholder="—" />
           </div>
         </div>
       </div>
@@ -483,11 +489,25 @@
 
     for (const s of SUBJECTS) {
       const q = num(s.key + "_q");
-      const c = num(s.key + "_correct");
-      const w = num(s.key + "_wrong");
       if (q < 1) return showError(`${s.name}: number of questions must be at least 1.`);
-      if (c < 0 || w < 0) return showError(`${s.name}: counts cannot be negative.`);
-      if (c + w > q) return showError(`${s.name}: Correct + Incorrect (${c + w}) cannot exceed ${q} questions.`);
+
+      let c = rawNum(s.key + "_correct"), w = rawNum(s.key + "_wrong"), u = rawNum(s.key + "_unattempted");
+      if ([c, w, u].some(x => x !== null && x < 0)) return showError(`${s.name}: counts cannot be negative.`);
+
+      const filled = [c, w, u].filter(x => x !== null).length;
+      if (filled === 0) {
+        c = 0; w = 0;   // subject left blank => treated as not attempted
+      } else if (filled === 1) {
+        return showError(`${s.name}: fill at least two of Correct, Incorrect and Unattempted (or leave all three blank).`);
+      } else if (filled === 2) {
+        if (c === null) c = q - w - u;
+        else if (w === null) w = q - c - u;
+        else u = q - c - w;
+        if (c < 0 || w < 0 || u < 0) return showError(`${s.name}: the values entered exceed its ${q} questions.`);
+      } else {
+        if (c + w + u !== q) return showError(`${s.name}: Correct + Incorrect + Unattempted (${c + w + u}) must equal ${q}.`);
+      }
+
       const sr = compute(c, w, q);
       rows.push({ name: s.name, r: sr });
       totalCorrect += c; totalWrong += w; totalQ += q;
