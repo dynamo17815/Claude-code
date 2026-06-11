@@ -570,7 +570,20 @@
   // ---- PWA: register service worker for offline + installability ----
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(() => { /* offline-only feature, safe to ignore */ });
+      // updateViaCache:"none" => the browser always re-checks sw.js, so new
+      // versions are picked up instead of being served from the HTTP cache.
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+        .then((reg) => { reg.update(); })
+        .catch(() => { /* offline-only feature, safe to ignore */ });
+    });
+
+    // When a new service worker takes control, reload once so the user
+    // immediately sees the latest version (no manual cache clearing needed).
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
     });
   }
 
