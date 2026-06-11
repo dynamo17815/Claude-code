@@ -4,7 +4,7 @@
 //     fall back to cache only when offline). This prevents stale-version issues.
 //   - Other assets        -> CACHE-FIRST (fast, and fine for versioned icons).
 // Bump CACHE_VERSION whenever cached files change.
-const CACHE_VERSION = "neet-calc-v3";
+const CACHE_VERSION = "neet-calc-v4";
 
 const ASSETS = [
   "./",
