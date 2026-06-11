@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEET Marks Calculator</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-soft: #273449;
+    --accent: #22c55e;
+    --accent-2: #38bdf8;
+    --danger: #f87171;
+    --muted: #94a3b8;
+    --text: #f1f5f9;
+    --border: #334155;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1d2942 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 64px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  header h1 {
+    font-size: 1.9rem;
+    letter-spacing: 0.5px;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 0.92rem;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+
+  .scheme {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .scheme div {
+    text-align: center;
+    flex: 1;
+  }
+
+  .scheme .big { font-size: 1.3rem; font-weight: 700; }
+  .scheme .c { color: var(--accent); }
+  .scheme .w { color: var(--danger); }
+  .scheme .u { color: var(--muted); }
+  .scheme small { color: var(--muted); display: block; margin-top: 2px; }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.18);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .hint {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .hint.warn { color: var(--danger); }
+
+  .btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  button {
+    flex: 1;
+    padding: 13px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.08s, opacity 0.15s;
+  }
+
+  button:active { transform: translateY(1px); }
+
+  .calc-btn { background: var(--accent); color: #06240f; }
+  .reset-btn { background: var(--card-soft); color: var(--text); border: 1px solid var(--border); }
+
+  /* Result card */
+  .result { display: none; }
+  .result.show { display: block; }
+
+  .score-big {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+
+  .score-big .num {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .score-big .den { color: var(--muted); font-size: 1.4rem; }
+  .score-big .pct { color: var(--accent-2); margin-top: 6px; font-size: 1rem; }
+
+  .bar {
+    height: 12px;
+    width: 100%;
+    background: var(--card-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 14px 0 18px;
+  }
+
+  .bar > div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    width: 0;
+    transition: width 0.5s ease;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat {
+    background: var(--card-soft);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .stat .k { font-size: 0.78rem; color: var(--muted); }
+  .stat .v { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
+
+  .v.pos { color: var(--accent); }
+  .v.neg { color: var(--danger); }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+  .subject-block {
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+
+  .subject-block h3 {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+    color: var(--accent-2);
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span>NEET</span> Marks Calculator</h1>
+    <p>Enter your answers and get your score using the official marking scheme.</p>
+  </header>
+
+  <!-- Marking scheme reminder -->
+  <div class="card">
+    <div class="scheme">
+      <div><div class="big c">+4</div><small>Correct</small></div>
+      <div><div class="big w">&minus;1</div><small>Incorrect</small></div>
+      <div><div class="big u">0</div><small>Unattempted</small></div>
+    </div>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <label class="toggle">
+      <input type="checkbox" id="subjectMode" />
+      Subject-wise mode (Physics / Chemistry / Biology)
+    </label>
+
+    <!-- SIMPLE MODE -->
+    <div id="simpleMode">
+      <div class="field">
+        <label for="total">Total number of questions</label>
+        <input type="number" id="total" min="1" value="180" />
+        <div class="hint">Standard NEET paper = 180 questions (720 max marks).</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="correct">Correct answers</label>
+          <input type="number" id="correct" min="0" placeholder="0" />
+        </div>
+        <div class="field">
+          <label for="wrong">Incorrect answers</label>
+          <input type="number" id="wrong" min="0" placeholder="0" />
+        </div>
+      </div>
+      <div class="hint" id="unattemptedHint">Unattempted questions are calculated automatically.</div>
+    </div>
+
+    <!-- SUBJECT MODE -->
+    <div id="subjectModeBlock" style="display:none;"></div>
+
+    <div class="btns" style="margin-top:18px;">
+      <button class="calc-btn" id="calcBtn">Calculate</button>
+      <button class="reset-btn" id="resetBtn">Reset</button>
+    </div>
+    <div class="hint warn" id="errorMsg" style="display:none;"></div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card result" id="result">
+    <div class="score-big">
+      <div><span class="num" id="scoreNum">0</span><span class="den" id="scoreDen"> / 720</span></div>
+      <div class="pct" id="scorePct">0%</div>
+    </div>
+
+    <div class="bar"><div id="scoreBar"></div></div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Attempted</div><div class="v" id="stAttempted">0</div></div>
+      <div class="stat"><div class="k">Unattempted</div><div class="v" id="stUnattempted">0</div></div>
+      <div class="stat"><div class="k">Marks gained</div><div class="v pos" id="stGained">+0</div></div>
+      <div class="stat"><div class="k">Marks lost</div><div class="v neg" id="stLost">-0</div></div>
+      <div class="stat"><div class="k">Accuracy</div><div class="v" id="stAccuracy">0%</div></div>
+      <div class="stat"><div class="k">Correct / Wrong</div><div class="v" id="stCW">0 / 0</div></div>
+    </div>
+
+    <div id="subjectResults"></div>
+  </div>
+
+  <footer>Marking scheme: +4 correct, &minus;1 incorrect, 0 unattempted. Built for quick self-evaluation.</footer>
+</div>
+
+<script>
+  const SUBJECTS = [
+    { key: "physics",   name: "Physics",   q: 45 },
+    { key: "chemistry", name: "Chemistry", q: 45 },
+    { key: "biology",   name: "Biology (Botany + Zoology)", q: 90 },
+  ];
+
+  const CORRECT_MARK = 4;
+  const WRONG_MARK = -1;
+
+  const $ = (id) => document.getElementById(id);
+
+  // ---- Build subject-mode inputs ----
+  function buildSubjectInputs() {
+    const wrap = $("subjectModeBlock");
+    wrap.innerHTML = SUBJECTS.map(s => `
+      <div class="subject-block">
+        <h3>${s.name} <span style="color:var(--muted);font-weight:400;">(${s.q} Q)</span></h3>
+        <div class="row">
+          <div class="field" style="margin-bottom:0;">
+            <label for="${s.key}_correct">Correct</label>
+            <input type="number" id="${s.key}_correct" min="0" placeholder="0" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="${s.key}_wrong">Incorrect</label>
+            <input type="number" id="${s.key}_wrong" min="0" placeholder="0" />
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+  buildSubjectInputs();
+
+  // ---- Mode toggle ----
+  $("subjectMode").addEventListener("change", (e) => {
+    const on = e.target.checked;
+    $("simpleMode").style.display = on ? "none" : "block";
+    $("subjectModeBlock").style.display = on ? "block" : "none";
+    hideResult();
+    clearError();
+  });
+
+  function showError(msg) {
+    const el = $("errorMsg");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+  function clearError() { $("errorMsg").style.display = "none"; }
+  function hideResult() { $("result").classList.remove("show"); }
+
+  function num(id) {
+    const v = parseInt($(id).value, 10);
+    return isNaN(v) ? 0 : v;
+  }
+
+  // ---- Core calculation ----
+  function compute(correct, wrong, total) {
+    const attempted = correct + wrong;
+    const unattempted = total - attempted;
+    const gained = correct * CORRECT_MARK;
+    const lost = wrong * Math.abs(WRONG_MARK);
+    const score = gained - lost;
+    const maxMarks = total * CORRECT_MARK;
+    const pct = maxMarks > 0 ? (score / maxMarks) * 100 : 0;
+    const accuracy = attempted > 0 ? (correct / attempted) * 100 : 0;
+    return { correct, wrong, attempted, unattempted, gained, lost, score, maxMarks, pct, accuracy };
+  }
+
+  function renderMain(r) {
+    $("scoreNum").textContent = r.score;
+    $("scoreDen").textContent = " / " + r.maxMarks;
+    $("scorePct").textContent = r.pct.toFixed(1) + "%";
+    // bar clamps 0-100 (score can be negative)
+    const barPct = Math.max(0, Math.min(100, r.pct));
+    $("scoreBar").style.width = barPct + "%";
+
+    $("stAttempted").textContent = r.attempted;
+    $("stUnattempted").textContent = r.unattempted;
+    $("stGained").textContent = "+" + r.gained;
+    $("stLost").textContent = "-" + r.lost;
+    $("stAccuracy").textContent = r.accuracy.toFixed(1) + "%";
+    $("stCW").textContent = r.correct + " / " + r.wrong;
+
+    $("result").classList.add("show");
+    $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  // ---- Simple mode ----
+  function calcSimple() {
+    const total = num("total");
+    const correct = num("correct");
+    const wrong = num("wrong");
+
+    if (total < 1) return showError("Total number of questions must be at least 1.");
+    if (correct < 0 || wrong < 0) return showError("Counts cannot be negative.");
+    if (correct + wrong > total) {
+      return showError(`Correct + Incorrect (${correct + wrong}) cannot exceed total questions (${total}).`);
+    }
+
+    clearError();
+    const r = compute(correct, wrong, total);
+    $("subjectResults").innerHTML = "";
+    renderMain(r);
+  }
+
+  // ---- Subject mode ----
+  function calcSubject() {
+    let totalCorrect = 0, totalWrong = 0, totalQ = 0;
+    const rows = [];
+
+    for (const s of SUBJECTS) {
+      const c = num(s.key + "_correct");
+      const w = num(s.key + "_wrong");
+      if (c < 0 || w < 0) return showError(`${s.name}: counts cannot be negative.`);
+      if (c + w > s.q) return showError(`${s.name}: Correct + Incorrect (${c + w}) cannot exceed ${s.q} questions.`);
+      const sr = compute(c, w, s.q);
+      rows.push({ name: s.name, r: sr });
+      totalCorrect += c; totalWrong += w; totalQ += s.q;
+    }
+
+    clearError();
+    const overall = compute(totalCorrect, totalWrong, totalQ);
+    renderMain(overall);
+
+    $("subjectResults").innerHTML = `
+      <div class="subject-block">
+        <h3>Subject-wise breakdown</h3>
+        ${rows.map(x => `
+          <div class="stat" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+            <div><div class="v" style="font-size:1rem;">${x.name}</div>
+              <div class="k">${x.r.correct} correct, ${x.r.wrong} wrong, ${x.r.unattempted} skipped</div></div>
+            <div class="v ${x.r.score >= 0 ? 'pos' : 'neg'}">${x.r.score} / ${x.r.maxMarks}</div>
+          </div>
+        `).join("")}
+      </div>`;
+  }
+
+  $("calcBtn").addEventListener("click", () => {
+    if ($("subjectMode").checked) calcSubject();
+    else calcSimple();
+  });
+
+  $("resetBtn").addEventListener("click", () => {
+    document.querySelectorAll("input[type=number]").forEach(i => {
+      i.value = (i.id === "total") ? 180 : "";
+    });
+    clearError();
+    hideResult();
+  });
+
+  // Enter key triggers calculate
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("calcBtn").click();
+  });
+
+  // Live unattempted hint in simple mode
+  ["total", "correct", "wrong"].forEach(id => {
+    $(id).addEventListener("input", () => {
+      const total = num("total"), c = num("correct"), w = num("wrong");
+      const left = total - c - w;
+      const hint = $("unattemptedHint");
+      if (c + w > total) {
+        hint.textContent = `⚠ Correct + Incorrect exceeds total by ${c + w - total}.`;
+        hint.classList.add("warn");
+      } else {
+        hint.textContent = `Unattempted = ${left} question${left === 1 ? "" : "s"} (auto-calculated).`;
+        hint.classList.remove("warn");
+      }
+    });
+  });
+</script>
+</body>
+</html>
