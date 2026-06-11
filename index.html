@@ -135,6 +135,12 @@
     gap: 14px;
   }
 
+  .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
   .hint {
     font-size: 0.78rem;
     color: var(--muted);
@@ -283,17 +289,23 @@
         <div class="hint">Standard NEET paper = 180 questions (720 max marks).</div>
       </div>
 
+      <p class="hint" style="margin-bottom:10px;">Fill any <b>two</b> of the three below — the third is calculated automatically.</p>
+
       <div class="row">
         <div class="field">
           <label for="correct">Correct answers</label>
-          <input type="number" id="correct" min="0" placeholder="0" />
+          <input type="number" id="correct" min="0" placeholder="—" />
         </div>
         <div class="field">
           <label for="wrong">Incorrect answers</label>
-          <input type="number" id="wrong" min="0" placeholder="0" />
+          <input type="number" id="wrong" min="0" placeholder="—" />
         </div>
       </div>
-      <div class="hint" id="unattemptedHint">Unattempted questions are calculated automatically.</div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="unattempted">Unattempted (left blank)</label>
+        <input type="number" id="unattempted" min="0" placeholder="—" />
+      </div>
+      <div class="hint" id="unattemptedHint">Fill any two of Correct / Incorrect / Unattempted — the third is auto-calculated.</div>
     </div>
 
     <!-- SUBJECT MODE -->
@@ -347,8 +359,12 @@
     const wrap = $("subjectModeBlock");
     wrap.innerHTML = SUBJECTS.map(s => `
       <div class="subject-block">
-        <h3>${s.name} <span style="color:var(--muted);font-weight:400;">(${s.q} Q)</span></h3>
-        <div class="row">
+        <h3>${s.name}</h3>
+        <div class="row3">
+          <div class="field" style="margin-bottom:0;">
+            <label for="${s.key}_q">Questions</label>
+            <input type="number" id="${s.key}_q" min="1" value="${s.q}" />
+          </div>
           <div class="field" style="margin-bottom:0;">
             <label for="${s.key}_correct">Correct</label>
             <input type="number" id="${s.key}_correct" min="0" placeholder="0" />
@@ -385,6 +401,15 @@
     return isNaN(v) ? 0 : v;
   }
 
+  // Like num(), but returns null for an empty field so we can tell
+  // "left blank" (compute me) apart from an explicit 0.
+  function rawNum(id) {
+    const el = $(id);
+    if (!el || el.value.trim() === "") return null;
+    const v = parseInt(el.value, 10);
+    return isNaN(v) ? null : v;
+  }
+
   // ---- Core calculation ----
   function compute(correct, wrong, total) {
     const attempted = correct + wrong;
@@ -418,19 +443,35 @@
   }
 
   // ---- Simple mode ----
+  // The user fills any TWO of {correct, wrong, unattempted}; the third is
+  // derived from the total. If all three are given, they must add up to total.
   function calcSimple() {
     const total = num("total");
-    const correct = num("correct");
-    const wrong = num("wrong");
-
     if (total < 1) return showError("Total number of questions must be at least 1.");
-    if (correct < 0 || wrong < 0) return showError("Counts cannot be negative.");
-    if (correct + wrong > total) {
-      return showError(`Correct + Incorrect (${correct + wrong}) cannot exceed total questions (${total}).`);
+
+    let c = rawNum("correct"), w = rawNum("wrong"), u = rawNum("unattempted");
+    if ([c, w, u].some(x => x !== null && x < 0)) return showError("Counts cannot be negative.");
+
+    const filled = [c, w, u].filter(x => x !== null).length;
+    if (filled < 2) return showError("Fill at least two of Correct, Incorrect and Unattempted.");
+
+    if (filled === 2) {
+      // derive the blank one from the total
+      if (c === null) c = total - w - u;
+      else if (w === null) w = total - c - u;
+      else u = total - c - w;
+      if (c < 0 || w < 0 || u < 0) {
+        return showError(`The values entered exceed the total of ${total} questions.`);
+      }
+    } else {
+      // all three given — they must be consistent with the total
+      if (c + w + u !== total) {
+        return showError(`Correct + Incorrect + Unattempted (${c + w + u}) must equal the total (${total}).`);
+      }
     }
 
     clearError();
-    const r = compute(correct, wrong, total);
+    const r = compute(c, w, total);
     $("subjectResults").innerHTML = "";
     renderMain(r);
   }
@@ -441,13 +482,15 @@
     const rows = [];
 
     for (const s of SUBJECTS) {
+      const q = num(s.key + "_q");
       const c = num(s.key + "_correct");
       const w = num(s.key + "_wrong");
+      if (q < 1) return showError(`${s.name}: number of questions must be at least 1.`);
       if (c < 0 || w < 0) return showError(`${s.name}: counts cannot be negative.`);
-      if (c + w > s.q) return showError(`${s.name}: Correct + Incorrect (${c + w}) cannot exceed ${s.q} questions.`);
-      const sr = compute(c, w, s.q);
+      if (c + w > q) return showError(`${s.name}: Correct + Incorrect (${c + w}) cannot exceed ${q} questions.`);
+      const sr = compute(c, w, q);
       rows.push({ name: s.name, r: sr });
-      totalCorrect += c; totalWrong += w; totalQ += s.q;
+      totalCorrect += c; totalWrong += w; totalQ += q;
     }
 
     clearError();
@@ -473,11 +516,12 @@
   });
 
   $("resetBtn").addEventListener("click", () => {
-    document.querySelectorAll("input[type=number]").forEach(i => {
-      i.value = (i.id === "total") ? 180 : "";
-    });
+    $("total").value = 180;
+    ["correct", "wrong", "unattempted"].forEach(id => { const el = $(id); if (el) el.value = ""; });
+    buildSubjectInputs();   // restores each subject's default question count and clears entries
     clearError();
     hideResult();
+    updateSimpleHint();
   });
 
   // Enter key triggers calculate
@@ -485,20 +529,42 @@
     if (e.key === "Enter") $("calcBtn").click();
   });
 
-  // Live unattempted hint in simple mode
-  ["total", "correct", "wrong"].forEach(id => {
-    $(id).addEventListener("input", () => {
-      const total = num("total"), c = num("correct"), w = num("wrong");
-      const left = total - c - w;
-      const hint = $("unattemptedHint");
-      if (c + w > total) {
-        hint.textContent = `⚠ Correct + Incorrect exceeds total by ${c + w - total}.`;
+  // Live hint in simple mode: shows which field will be auto-filled, or warns on conflicts.
+  function updateSimpleHint() {
+    const hint = $("unattemptedHint");
+    hint.classList.remove("warn");
+    const total = num("total");
+    const c = rawNum("correct"), w = rawNum("wrong"), u = rawNum("unattempted");
+    const names = { correct: "Correct", wrong: "Incorrect", unattempted: "Unattempted" };
+    const values = { correct: c, wrong: w, unattempted: u };
+    const filledKeys = Object.keys(values).filter(k => values[k] !== null);
+
+    if (filledKeys.length < 2) {
+      hint.textContent = "Fill any two of Correct / Incorrect / Unattempted — the third is auto-calculated.";
+      return;
+    }
+    if (filledKeys.length === 2) {
+      const missingKey = Object.keys(values).find(k => values[k] === null);
+      const sum = filledKeys.reduce((a, k) => a + values[k], 0);
+      const val = total - sum;
+      if (val < 0) {
+        hint.textContent = `⚠ Those two values exceed the total (${total}) by ${-val}.`;
         hint.classList.add("warn");
       } else {
-        hint.textContent = `Unattempted = ${left} question${left === 1 ? "" : "s"} (auto-calculated).`;
-        hint.classList.remove("warn");
+        hint.textContent = `Auto: ${names[missingKey]} = ${val}.`;
       }
-    });
+    } else {
+      const sum = c + w + u;
+      if (sum !== total) {
+        hint.textContent = `⚠ Correct + Incorrect + Unattempted = ${sum}, but the total is ${total}.`;
+        hint.classList.add("warn");
+      } else {
+        hint.textContent = "All three add up to the total ✓";
+      }
+    }
+  }
+  ["total", "correct", "wrong", "unattempted"].forEach(id => {
+    $(id).addEventListener("input", updateSimpleHint);
   });
 
   // ---- PWA: register service worker for offline + installability ----
