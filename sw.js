@@ -1,6 +1,6 @@
 // Service worker for NEET Marks Calculator (offline support).
 // Bump CACHE_VERSION whenever the cached files change to force an update.
-const CACHE_VERSION = "neet-calc-v1";
+const CACHE_VERSION = "neet-calc-v2";
 
 const ASSETS = [
   "./",
